@@ -36,6 +36,14 @@ defmodule TelehashnameTest do
     refute Hashname.is_valid_csid?("bad")
   end
 
+  test "is_valid?" do
+    assert Hashname.is_valid?("echmb6eke2f6z2mqdwifrt6i6hkkfua7hiisgrms6pwttd6jubiq")
+    assert Hashname.is_valid?("27ywx5e5ylzxfzxrhptowvwntqrd3jhksyxrfkzi6jfn64d3lwxa")
+    refute Hashname.is_valid?("27ywx5e5ylzxfzxrhptowvwntqrd3jhksyxrfkzi6jfn64d3lwx/")
+    refute Hashname.is_valid?("hashname")
+  end
+
+
   test "order_valid_cs_pairs" do
     in_list = [{"8a", "doot"}, {"cs1a", "root"}, {"toot", "2a"}, {"3a", "loot"}]
     assert Hashname.order_valid_cs_pairs(in_list) == [{"1a", "root"}, {"3a", "loot"}, {"8a", "doot"}]

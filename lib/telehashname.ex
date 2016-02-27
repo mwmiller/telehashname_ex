@@ -21,6 +21,15 @@ defmodule Telehashname do
     ovcp(rest, newacc)
   end
 
+  @spec is_valid?(term) :: boolean
+  def is_valid?(hn) when is_binary(hn) and byte_size(hn) == 52 do
+    case Base.decode32(hn,bp) do
+      {:ok, b} -> byte_size(b) == 32 # I think this is superfluous, but why not?
+      :error   -> false
+    end
+  end
+  def is_valid?(_), do: false
+
   @spec is_valid_csid?(term) :: boolean
   def is_valid_csid?(id) when is_binary(id) and byte_size(id) == 2 do
     case Base.decode16(id, bp) do
