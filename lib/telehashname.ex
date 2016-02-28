@@ -1,15 +1,72 @@
 defmodule Telehashname do
+  @moduledoc """
+  Telehash hashname handling
 
+  https://github.com/telehash/telehash.org/blob/master/v3/hashname.md
+  """
+  @typedoc """
+  Cipher Set ID
+
+  As an affordance, many functions will take a 4-byte CSID (the CSID with a pre-pended `cs`.)
+  These will be normalized in most return values.  It is not recommended to depend upon this
+  behavior.
+  """
   @type csid :: <<_::2 * 8>>
-  @type csk :: binary
-  @type cs_pair :: {csid, csk}
-  @type sort_dir :: :asc | :dsc
+  @typedoc """
+  Cipher Set Key
+  """
+  @type csk :: {csid, binary}
+  @typedoc """
+  Sort direction control
 
-  @spec from_tuples([cs_pair]) :: {binary, map} | nil
-  def from_tuples(csk_list) do
-    csk_list |> ids(:asc) |> hash_tuples({"",%{}})
+  - :asc == ascending
+  - :dsc == descending
+  """
+  @type sort_dir :: :asc | :dsc
+  @typedoc """
+  A list of CSKs
+
+  Maps will generally be transformed to a list of CSK tuples in the
+  return values.
+  """
+  @type csk_list :: [csk] | map
+  @typedoc """
+  A list of CSIDs
+  """
+  @type csid_list :: csk_list | [csid]
+
+  @doc """
+  Generate a hashname from a list of CSKs
+
+  As an affordance, a map may also be provided.  It will be transformed
+  into a sorted CSK list.
+
+  The return value is a tuple with the hashname and a map of the intermediate
+  values used for generation.
+
+  `nil` is returned when no valid CSKs are found in the list.
+  """
+  @spec from_csks(csk_list) :: {binary, map} | nil
+  def from_csks(csks), do: csks |> ids(:asc) |> hash_tuples({"",%{}})
+
+  defp hash_tuples([], {h,m}) when byte_size(h) > 0, do: {h |> Base.encode32(bp), m}
+  defp hash_tuples([], _empty_tuple),  do: nil
+  defp hash_tuples([{csid, csk}|rest], {h,m}) do
+    hash = :crypto.hash(:sha256, h<>Base.decode16!(csid, bp))
+    intr = :crypto.hash(:sha256, Base.decode32!(csk, bp))
+    hash_tuples(rest, {:crypto.hash(:sha256, hash<>intr), Map.put(m,csid,(intr |> Base.encode32(bp)))})
   end
 
+  @doc """
+  Validate and sort a CSID list
+
+  This can handle multiple forms of provided CSIDs.  The return value
+  will be appropriate to the input parameter.
+
+  Invalid CSIDs are removed, remaining IDs are normalized and sorted
+  in the requested order.
+  """
+  @spec ids(csid_list, sort_dir) :: [csid|csk]
   def ids(ids, dir \\ :dsc)
   def ids(ids, dir) when is_map(ids), do: ids |> Map.to_list |> ids(dir)
   def ids(ids, dir) when is_list(ids) do
@@ -21,6 +78,37 @@ defmodule Telehashname do
      valid_ids(ids, []) |> Enum.sort(sort_func)
   end
 
+  @spec valid_ids(csid_list, csid_list) ::  [csk|csid]
+  defp valid_ids([], acc), do: acc
+  defp valid_ids([{csid, data}|rest],acc) do
+    newacc = case csid |> String.downcase |> valid_csid do
+        nil ->  acc
+        id  ->  [{id, data}|acc]
+    end
+    valid_ids(rest, newacc)
+  end
+  defp valid_ids([csid|rest],acc) do
+    newacc = case csid |> String.downcase |> valid_csid do
+        nil ->  acc
+        id  ->  [id|acc]
+    end
+    valid_ids(rest, newacc)
+  end
+
+  @spec valid_csid(term) :: csid | nil
+  defp valid_csid(csid) do
+    csid = if byte_size(csid) == 4 and binary_part(csid, 0,2) == "cs", do: binary_part(csid,2,2), else: csid
+    if is_valid_csid?(csid), do: csid, else: nil
+  end
+
+  @doc """
+  Find the highest rated match among two CSK lists
+
+  The values returned from the `outs` list.  Selecting
+  which list to use for `check` and `outs` may provide
+  some useful information "for free."
+  """
+  @spec best_match(csid_list, csid_list) :: csid | csk | nil
   def best_match(check, outs) do
         cids = ids(check)
         oids = ids(outs)
@@ -42,7 +130,11 @@ defmodule Telehashname do
                        end
         match(cids,oids, find_fun_fun)
   end
+
+  @spec is_tuple_list(list) :: boolean
   defp is_tuple_list(list), do: list |> List.first |> is_tuple
+
+  @spec match(csid_list, csid_list, function) :: csk | csid | nil
   defp match([],_outs,_fff), do: nil
   defp match([c|check],outs,fff) do
       case Enum.find(outs, fff.(c)) do
@@ -51,27 +143,11 @@ defmodule Telehashname do
       end
   end
 
-  defp valid_ids([], acc), do: acc
-  defp valid_ids([{csid, data}|rest],acc) do
-    newacc = case valid_csid(csid) do
-        nil ->  acc
-        id  ->  [{id, data}|acc]
-    end
-    valid_ids(rest, newacc)
-  end
-  defp valid_ids([csid|rest],acc) do
-    newacc = case valid_csid(csid) do
-        nil ->  acc
-        id  ->  [id|acc]
-    end
-    valid_ids(rest, newacc)
-  end
+  @doc """
+  Determine if something looks like a valid hashname
 
-  defp valid_csid(csid) do
-    csid = if byte_size(csid) == 4 and binary_part(csid, 0,2) == "cs", do: binary_part(csid,2,2), else: csid
-    if is_valid_csid?(csid), do: csid, else: nil
-  end
-
+  Confirms form only, not validity
+  """
   @spec is_valid?(term) :: boolean
   def is_valid?(hn) when is_binary(hn) and byte_size(hn) == 52 do
     case Base.decode32(hn,bp) do
@@ -81,6 +157,12 @@ defmodule Telehashname do
   end
   def is_valid?(_), do: false
 
+  @doc """
+  Determine if something looks like a valid CSID
+
+  Confirms form only, not validity.  Some functions be more liberal in
+  what they accept, but confirming validity is always better.
+  """
   @spec is_valid_csid?(term) :: boolean
   def is_valid_csid?(id) when is_binary(id) and byte_size(id) == 2 do
     case Base.decode16(id, bp) do
@@ -90,14 +172,7 @@ defmodule Telehashname do
   end
   def is_valid_csid?(_), do: false
 
+  # Base parameters, just to thet are all used in the same way.
   defp bp, do: [case: :lower, padding: false]
-
-  defp hash_tuples([], {h,m}) when byte_size(h) > 0, do: {h |> Base.encode32(bp), m}
-  defp hash_tuples([], _empty_tuple),  do: nil
-  defp hash_tuples([{csid, csk}|rest], {h,m}) do
-    hash = :crypto.hash(:sha256, h<>Base.decode16!(csid, bp))
-    intr = :crypto.hash(:sha256, Base.decode32!(csk, bp))
-    hash_tuples(rest, {:crypto.hash(:sha256, hash<>intr), Map.put(m,csid,(intr |> Base.encode32(bp)))})
-  end
 
 end
