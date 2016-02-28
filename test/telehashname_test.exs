@@ -44,9 +44,22 @@ defmodule TelehashnameTest do
   end
 
 
-  test "order_valid_cs_pairs" do
-    in_list = [{"8a", "doot"}, {"cs1a", "root"}, {"toot", "2a"}, {"3a", "loot"}]
-    assert Hashname.order_valid_cs_pairs(in_list) == [{"1a", "root"}, {"3a", "loot"}, {"8a", "doot"}]
+  test "ids" do
+    in_list = ["8a", "cs1a", "toot", "3a"]
+    in_tuple_list = [{"8a", "doot"}, {"cs1a", "root"}, {"toot", "2a"}, {"3a", "loot"}]
+    in_map  = %{"8a" => "doot", "cs1a" => "root", "toot" => "2a", "3a" => "loot"}
+
+    assert Hashname.ids(in_tuple_list, :asc) == [{"1a", "root"}, {"3a", "loot"}, {"8a", "doot"}]
+    assert Hashname.ids(in_tuple_list, :dsc) == [{"8a", "doot"}, {"3a", "loot"}, {"1a", "root"}]
+    assert Hashname.ids(in_tuple_list)       == [{"8a", "doot"}, {"3a", "loot"}, {"1a", "root"}]
+
+    assert Hashname.ids(in_map, :asc)        == [{"1a", "root"}, {"3a", "loot"}, {"8a", "doot"}]
+    assert Hashname.ids(in_map, :dsc)        == [{"8a", "doot"}, {"3a", "loot"}, {"1a", "root"}]
+    assert Hashname.ids(in_map)              == [{"8a", "doot"}, {"3a", "loot"}, {"1a", "root"}]
+
+    assert Hashname.ids(in_list, :asc)       == ["1a", "3a", "8a"]
+    assert Hashname.ids(in_list, :dsc)       == ["8a", "3a", "1a"]
+    assert Hashname.ids(in_list)             == ["8a", "3a", "1a"]
   end
 
 end

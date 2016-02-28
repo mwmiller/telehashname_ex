@@ -3,22 +3,43 @@ defmodule Telehashname do
   @type csid :: <<_::2 * 8>>
   @type csk :: binary
   @type cs_pair :: {csid, csk}
+  @type sort_dir :: :asc | :dsc
 
   @spec from_tuples([cs_pair]) :: {binary, map} | nil
   def from_tuples(csk_list) do
-    csk_list |> order_valid_cs_pairs |> hash_tuples({"",%{}})
+    csk_list |> ids(:asc) |> hash_tuples({"",%{}})
   end
 
-  def order_valid_cs_pairs(list), do: ovcp(list, [])
-  defp ovcp([], acc), do: acc |> Enum.sort(&(elem(&1,0) <= elem(&2,0)))
-  defp ovcp([{csid, csk}|rest],acc) do
-    csid = if byte_size(csid) == 4 and binary_part(csid, 0,2) == "cs", do: binary_part(csid,2,2), else: csid
-    newacc = if is_valid_csid? csid do
-        [{csid,csk}|acc]
-    else
-        acc
+  def ids(ids, dir \\ :dsc)
+  def ids(ids, dir) when is_map(ids), do: ids |> Map.to_list |> ids(dir)
+  def ids(ids, dir) when is_list(ids) do
+    sort_func = case dir do
+                  :asc -> &(&1 <= &2)
+                  :dsc -> &(&1 >= &2)
+                  _    -> raise("Improper sort direction")
+                end
+     valid_ids(ids, []) |> Enum.sort(sort_func)
+  end
+
+  defp valid_ids([], acc), do: acc
+  defp valid_ids([{csid, data}|rest],acc) do
+    newacc = case valid_csid(csid) do
+        nil ->  acc
+        id  ->  [{id, data}|acc]
     end
-    ovcp(rest, newacc)
+    valid_ids(rest, newacc)
+  end
+  defp valid_ids([csid|rest],acc) do
+    newacc = case valid_csid(csid) do
+        nil ->  acc
+        id  ->  [id|acc]
+    end
+    valid_ids(rest, newacc)
+  end
+
+  defp valid_csid(csid) do
+    csid = if byte_size(csid) == 4 and binary_part(csid, 0,2) == "cs", do: binary_part(csid,2,2), else: csid
+    if is_valid_csid?(csid), do: csid, else: nil
   end
 
   @spec is_valid?(term) :: boolean
