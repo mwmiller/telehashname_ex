@@ -62,4 +62,37 @@ defmodule TelehashnameTest do
     assert Hashname.ids(in_list)             == ["8a", "3a", "1a"]
   end
 
+  test "best_match" do
+
+    checks = %{"1a" => "lo", "3a" => "hi"}
+    outs   = %{"3a" => "lo", "8a" => "hi"}
+
+    assert Hashname.best_match(checks,outs) == {"3a", "lo"}
+
+    checks = ["2a", "8a", "3a"]
+    assert Hashname.best_match(checks,outs) == {"8a", "hi"}
+
+    outs = ["1a","2a","3a"]
+    assert Hashname.best_match(checks,outs) == "3a"
+
+    checks = [{"bad", "thing"}, {"still", "bad"}, {"1a", "ok"}]
+    outs   = ["bad", "still"]
+    assert Hashname.best_match(checks,outs) == nil
+
+    outs   = ["bad", "still", "cs1a"]
+    assert Hashname.best_match(checks,outs) == "1a"
+
+    checks = %{"1a" => "only"}
+    outs   = %{"2a" => "only"}
+    assert Hashname.best_match(checks,outs) == nil
+
+    checks = %{"1a" => "lo", "2a" => "med", "3a" => "high"}
+    assert Hashname.best_match(checks,outs) == {"2a", "only"}
+
+    checks = %{"1a" => "only"}
+    outs   = %{"1a" => "lo", "2a" => "med", "3a" => "high"}
+    assert Hashname.best_match(checks,outs) == {"1a", "lo"}
+
+  end
+
 end

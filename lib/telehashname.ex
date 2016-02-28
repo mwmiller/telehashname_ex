@@ -21,6 +21,36 @@ defmodule Telehashname do
      valid_ids(ids, []) |> Enum.sort(sort_func)
   end
 
+  def best_match(check, outs) do
+        cids = ids(check)
+        oids = ids(outs)
+        find_fun_fun = case {is_tuple_list(cids),is_tuple_list(oids)} do
+                        {true,true}   -> fn(check) ->
+                                           c = elem(check,0)
+                                           fn(x) -> elem(x,0) == c end
+                                         end
+                        {true,false}  -> fn(check) ->
+                                           c = elem(check,0)
+                                           fn(x) -> x == c end
+                                         end
+                        {false,true}  -> fn(c) ->
+                                           fn(x) -> elem(x,0) == c end
+                                         end
+                        {false,false} -> fn(c) ->
+                                           fn(x) -> x == c end
+                                         end
+                       end
+        match(cids,oids, find_fun_fun)
+  end
+  defp is_tuple_list(list), do: list |> List.first |> is_tuple
+  defp match([],_outs,_fff), do: nil
+  defp match([c|check],outs,fff) do
+      case Enum.find(outs, fff.(c)) do
+          nil -> match(check,outs,fff)
+          hit -> hit
+      end
+  end
+
   defp valid_ids([], acc), do: acc
   defp valid_ids([{csid, data}|rest],acc) do
     newacc = case valid_csid(csid) do
