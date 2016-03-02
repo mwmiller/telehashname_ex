@@ -15,7 +15,7 @@ defmodule Telehashname do
   @typedoc """
   Cipher Set Key
   """
-  @type csk :: {csid, binary}
+  @type csk_tuple :: {csid, binary}
   @typedoc """
   Sort direction control
 
@@ -29,7 +29,7 @@ defmodule Telehashname do
   Maps will generally be transformed to a list of CSK tuples in the
   return values.
   """
-  @type csk_list :: [csk] | map
+  @type csk_list :: [csk_tuple] | map
   @typedoc """
   A list of CSIDs
   """
@@ -46,15 +46,21 @@ defmodule Telehashname do
 
   `nil` is returned when no valid CSKs are found in the list.
   """
-  @spec from_csks(csk_list) :: {binary, map} | nil
-  def from_csks(csks), do: csks |> ids(:asc) |> hash_tuples({"",%{}})
+  @spec from_csks(csk_list, map) :: {binary, map} | nil
+  def from_csks(csks, im \\ %{}), do: csks |> ids(:asc) |> hash_tuples({"",im})
 
   defp hash_tuples([], {h,m}) when byte_size(h) > 0, do: {h |> Base.encode32(bp), m}
   defp hash_tuples([], _empty_tuple),  do: nil
   defp hash_tuples([{csid, csk}|rest], {h,m}) do
+    IO.inspect(m)
     hash = :crypto.hash(:sha256, h<>Base.decode16!(csid, bp))
-    intr = :crypto.hash(:sha256, Base.decode32!(csk, bp))
-    hash_tuples(rest, {:crypto.hash(:sha256, hash<>intr), Map.put(m,csid,(intr |> Base.encode32(bp)))})
+    intr = case Map.fetch(m, csid) do
+            :error -> v = :crypto.hash(:sha256, Base.decode32!(csk, bp))
+                      m = Map.put(m,csid, (v |> Base.encode32(bp)))
+                      IO.inspect(v |> Base.encode32(bp))
+            val    -> Base.decode32!(val)
+           end
+    hash_tuples(rest, {:crypto.hash(:sha256, hash<>intr), m})
   end
 
   @doc """
@@ -66,7 +72,7 @@ defmodule Telehashname do
   Invalid CSIDs are removed, remaining IDs are normalized and sorted
   in the requested order.
   """
-  @spec ids(csid_list, sort_dir) :: [csid|csk]
+  @spec ids(csid_list, sort_dir) :: [csid|csk_tuple]
   def ids(ids, dir \\ :dsc)
   def ids(ids, dir) when is_map(ids), do: ids |> Map.to_list |> ids(dir)
   def ids(ids, dir) when is_list(ids) do
@@ -78,7 +84,7 @@ defmodule Telehashname do
      valid_ids(ids, []) |> Enum.sort(sort_func)
   end
 
-  @spec valid_ids(csid_list, csid_list) ::  [csk|csid]
+  @spec valid_ids(csid_list, csid_list) ::  [csk_tuple|csid]
   defp valid_ids([], acc), do: acc
   defp valid_ids([{csid, data}|rest],acc) do
     newacc = case csid |> String.downcase |> valid_csid do
@@ -108,7 +114,7 @@ defmodule Telehashname do
   which list to use for `check` and `outs` may provide
   some useful information "for free."
   """
-  @spec best_match(csid_list, csid_list) :: csid | csk | nil
+  @spec best_match(csid_list, csid_list) :: csid | csk_tuple | nil
   def best_match(check, outs) do
         cids = ids(check)
         oids = ids(outs)
@@ -134,7 +140,7 @@ defmodule Telehashname do
   @spec is_tuple_list(list) :: boolean
   defp is_tuple_list(list), do: list |> List.first |> is_tuple
 
-  @spec match(csid_list, csid_list, function) :: csk | csid | nil
+  @spec match(csid_list, csid_list, function) :: csk_tuple | csid | nil
   defp match([],_outs,_fff), do: nil
   defp match([c|check],outs,fff) do
       case Enum.find(outs, fff.(c)) do
