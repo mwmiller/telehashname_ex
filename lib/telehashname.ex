@@ -38,8 +38,7 @@ defmodule Telehashname do
   @doc """
   Generate a hashname from a list of CSKs
 
-  As an affordance, a map may also be provided.  It will be transformed
-  into a sorted CSK list.
+  As an affordance, an intermediates map may also be provided.
 
   The return value is a tuple with the hashname and a map of the intermediate
   values used for generation.
@@ -47,20 +46,25 @@ defmodule Telehashname do
   `nil` is returned when no valid CSKs are found in the list.
   """
   @spec from_csks(csk_list, map) :: {binary, map} | nil
-  def from_csks(csks, im \\ %{}), do: csks |> ids(:asc) |> hash_tuples({"",im})
+  def from_csks(csks, im \\ %{}), do: fill_intermediates(csks,im) |> hash_intermediates({"",%{}})
 
-  defp hash_tuples([], {h,m}) when byte_size(h) > 0, do: {h |> Base.encode32(bp), m}
-  defp hash_tuples([], _empty_tuple),  do: nil
-  defp hash_tuples([{csid, csk}|rest], {h,m}) do
-    IO.inspect(m)
+  defp fill_intermediates([], map), do: map |> ids(:asc)
+  defp fill_intermediates([{csid, csk}|rest], map) do
+    if Map.fetch(map, csid) == :error, do: map = Map.put(map,csid, :crypto.hash(:sha256, Base.decode32!(csk, bp)) |> Base.encode32(bp))
+    fill_intermediates(rest,map)
+  end
+
+  @doc """
+  Generate a hashname from intermediates
+
+  """
+  @spec from_intermediates(csk_list|map) :: {binary, map} | nil
+  def from_intermediates(ims), do: ims |> ids(:asc) |> hash_intermediates({"",%{}})
+  defp hash_intermediates([], {h, ims}) when byte_size(h) > 0, do: {h |> Base.encode32(bp), ims}
+  defp hash_intermediates([], _empty_tuple), do: nil
+  defp hash_intermediates([{csid, im}|rest], {h,m})  do nil
     hash = :crypto.hash(:sha256, h<>Base.decode16!(csid, bp))
-    intr = case Map.fetch(m, csid) do
-            :error -> v = :crypto.hash(:sha256, Base.decode32!(csk, bp))
-                      m = Map.put(m,csid, (v |> Base.encode32(bp)))
-                      IO.inspect(v |> Base.encode32(bp))
-            val    -> Base.decode32!(val)
-           end
-    hash_tuples(rest, {:crypto.hash(:sha256, hash<>intr), m})
+    hash_intermediates(rest, {:crypto.hash(:sha256, hash<>Base.decode32!(im,bp)), Map.put(m,csid,im)})
   end
 
   @doc """

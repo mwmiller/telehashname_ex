@@ -3,7 +3,7 @@ defmodule Telehashname.Mixfile do
 
   def project do
     [app: :telehashname,
-     version: "0.0.1",
+     version: "0.0.2",
      elixir: "~> 1.2",
      name: "Telehashname",
      source_url: "https://github.com/mwmiller/telehashname_ex",

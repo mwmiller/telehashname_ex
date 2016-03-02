@@ -27,6 +27,22 @@ defmodule TelehashnameTest do
     assert Hashname.from_csks(csk_list) == {"echmb6eke2f6z2mqdwifrt6i6hkkfua7hiisgrms6pwttd6jubiq",
                                              %{"1a" => "ym7p66flpzyncnwkzxv2qk5dtosgnnstgfhw6xj2wvbvm7oz5oaq"}
                                            }
+    csk_list = [  {"3a","hp6yglmmqwcbw5hno37uauh6fn6dx5oj7s5vtapaifrur2jv6zha"} ]
+    im_map   = %{"1a" => "ym7p66flpzyncnwkzxv2qk5dtosgnnstgfhw6xj2wvbvm7oz5oaq"}
+    assert Hashname.from_csks(csk_list, im_map) == {"jvdoio6kjvf3yqnxfvck43twaibbg4pmb7y3mqnvxafb26rqllwa",
+                                                    %{"1a" => "ym7p66flpzyncnwkzxv2qk5dtosgnnstgfhw6xj2wvbvm7oz5oaq",
+                                                    "3a" => "bmxelsxgecormqjlnati6chxqua7wzipxliw5le35ifwxlge2zva"}
+                                                   }
+  end
+
+  test "from_intermediates" do
+    im_map = %{"1a" => "eg3fxjnjkz763cjfnhyabeftyf75m2s4gll3gvmuacegax5h6nia",
+               "3a" => "s7md2gxysgmhjjcjo2iuln5tznddlgzmcilj5zj6na2hppweoeaq"}
+
+    assert Hashname.from_intermediates(im_map) == {"27ywx5e5ylzxfzxrhptowvwntqrd3jhksyxrfkzi6jfn64d3lwxa",
+                                                   %{"1a" => "eg3fxjnjkz763cjfnhyabeftyf75m2s4gll3gvmuacegax5h6nia",
+                                                     "3a" => "s7md2gxysgmhjjcjo2iuln5tznddlgzmcilj5zj6na2hppweoeaq"}
+                                                  }
   end
 
   test "is_valid_csid?" do
