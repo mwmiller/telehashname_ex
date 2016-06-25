@@ -1,5 +1,5 @@
 defmodule TelehashnameTest do
-  use PowerAssert
+  use ExUnit.Case
   doctest Telehashname
   alias Telehashname, as: Hashname
 

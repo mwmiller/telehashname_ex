@@ -11,7 +11,7 @@ defmodule Telehashname do
   These will be normalized in most return values.  It is not recommended to depend upon this
   behavior.
   """
-  @type csid :: <<_::2 * 8>>
+  @type csid :: binary
   @typedoc """
   Cipher Set Key
   """
@@ -50,7 +50,10 @@ defmodule Telehashname do
 
   defp fill_intermediates([], map), do: map |> ids(:asc)
   defp fill_intermediates([{csid, csk}|rest], map) do
-    if Map.fetch(map, csid) == :error, do: map = Map.put(map,csid, :crypto.hash(:sha256, Base.decode32!(csk, bp)) |> Base.encode32(bp))
+    map = case Map.fetch(map, csid) do
+        :error      -> Map.put(map,csid, :crypto.hash(:sha256, Base.decode32!(csk, bp)) |> Base.encode32(bp))
+        _           -> map
+    end
     fill_intermediates(rest,map)
   end
 
