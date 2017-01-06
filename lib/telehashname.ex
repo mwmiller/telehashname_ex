@@ -51,7 +51,7 @@ defmodule Telehashname do
   defp fill_intermediates([], map), do: map |> ids(:asc)
   defp fill_intermediates([{csid, csk}|rest], map) do
     map = case Map.fetch(map, csid) do
-        :error      -> Map.put(map,csid, :crypto.hash(:sha256, Base.decode32!(csk, bp)) |> Base.encode32(bp))
+        :error      -> Map.put(map,csid, :crypto.hash(:sha256, Base.decode32!(csk, bp())) |> Base.encode32(bp()))
         _           -> map
     end
     fill_intermediates(rest,map)
@@ -63,11 +63,11 @@ defmodule Telehashname do
   """
   @spec from_intermediates(csk_list|map) :: {binary, map} | nil
   def from_intermediates(ims), do: ims |> ids(:asc) |> hash_intermediates({"",%{}})
-  defp hash_intermediates([], {h, ims}) when byte_size(h) > 0, do: {h |> Base.encode32(bp), ims}
+  defp hash_intermediates([], {h, ims}) when byte_size(h) > 0, do: {h |> Base.encode32(bp()), ims}
   defp hash_intermediates([], _empty_tuple), do: nil
   defp hash_intermediates([{csid, im}|rest], {h,m})  do nil
-    hash = :crypto.hash(:sha256, h<>Base.decode16!(csid, bp))
-    hash_intermediates(rest, {:crypto.hash(:sha256, hash<>Base.decode32!(im,bp)), Map.put(m,csid,im)})
+    hash = :crypto.hash(:sha256, h<>Base.decode16!(csid, bp()))
+    hash_intermediates(rest, {:crypto.hash(:sha256, hash<>Base.decode32!(im,bp())), Map.put(m,csid,im)})
   end
 
   @doc """
@@ -163,7 +163,7 @@ defmodule Telehashname do
   """
   @spec is_valid?(term) :: boolean
   def is_valid?(hn) when is_binary(hn) and byte_size(hn) == 52 do
-    case Base.decode32(hn,bp) do
+    case Base.decode32(hn,bp()) do
       {:ok, b} -> byte_size(b) == 32 # I think this is superfluous, but why not?
       :error   -> false
     end
@@ -178,14 +178,14 @@ defmodule Telehashname do
   """
   @spec is_valid_csid?(term) :: boolean
   def is_valid_csid?(id) when is_binary(id) and byte_size(id) == 2 do
-    case Base.decode16(id, bp) do
-      {:ok, h} -> Base.encode16(h,bp) == id
+    case Base.decode16(id, bp()) do
+      {:ok, h} -> Base.encode16(h,bp()) == id
       :error   -> false
     end
   end
   def is_valid_csid?(_), do: false
 
   # Base parameters, just to thet are all used in the same way.
-  defp bp, do: [case: :lower, padding: false]
+  defp bp(), do: [case: :lower, padding: false]
 
 end
