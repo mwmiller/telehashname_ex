@@ -4,8 +4,8 @@ defmodule Telehashname.Mixfile do
   def project do
     [
       app: :telehashname,
-      version: "1.0.1",
-      elixir: "~> 1.7",
+      version: "1.0.2",
+      elixir: "~> 1.15",
       name: "Telehashname",
       source_url: "https://github.com/mwmiller/telehashname_ex",
       build_embedded: Mix.env() == :prod,
